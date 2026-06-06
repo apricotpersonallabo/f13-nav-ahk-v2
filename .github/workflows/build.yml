@@ -9,6 +9,8 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AUTOHOTKEY_RELEASE_TAG: v2.0.26
+  AHK2EXE_RELEASE_TAG: Ahk2Exe1.1.37.02a2
 
 jobs:
   build:
@@ -31,34 +33,34 @@ jobs:
 
           $headers = @{ "User-Agent" = "github-actions" }
 
-          # Download AutoHotkey v2 from GitHub Releases.
+          # Download pinned AutoHotkey v2 release.
           $ahkRelease = Invoke-RestMethod `
             -Headers $headers `
-            -Uri "https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest"
+            -Uri "https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/tags/${env:AUTOHOTKEY_RELEASE_TAG}"
 
           $ahkAsset = $ahkRelease.assets |
             Where-Object { $_.name -match '^AutoHotkey_2\..*\.zip$' } |
             Select-Object -First 1
 
           if (-not $ahkAsset) {
-            throw "AutoHotkey v2 ZIP asset not found."
+            throw "AutoHotkey v2 ZIP asset not found for release ${env:AUTOHOTKEY_RELEASE_TAG}."
           }
 
           $ahkZip = Join-Path $tools "autohotkey-v2.zip"
           Invoke-WebRequest $ahkAsset.browser_download_url -OutFile $ahkZip
           Expand-Archive $ahkZip (Join-Path $tools "autohotkey-v2") -Force
 
-          # Download Ahk2Exe from GitHub Releases.
+          # Download pinned Ahk2Exe release.
           $ahk2exeRelease = Invoke-RestMethod `
             -Headers $headers `
-            -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
+            -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/tags/${env:AHK2EXE_RELEASE_TAG}"
 
           $ahk2exeAsset = $ahk2exeRelease.assets |
             Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' -or $_.name -match '^Ahk2Exe.*\.exe$' } |
             Select-Object -First 1
 
           if (-not $ahk2exeAsset) {
-            throw "Ahk2Exe release asset not found."
+            throw "Ahk2Exe release asset not found for release ${env:AHK2EXE_RELEASE_TAG}."
           }
 
           $ahk2exeDownload = Join-Path $tools $ahk2exeAsset.name
