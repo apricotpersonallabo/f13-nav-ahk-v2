@@ -25,7 +25,7 @@ AutoHotkey64.exe .\src\f13-nav.ahk
 
 ## GitHub Actions でビルドする場合
 
-このリポジトリを GitHub に push すると、Windows runner 上で AutoHotkey v2 と Ahk2Exe を取得し、EXE を生成します。
+このリポジトリを GitHub に push すると、Windows runner 上で AutoHotkey v2 と Ahk2Exe を取得し、EXE を生成します。GitHub Actions の Node.js 20 非推奨警告を避けるため、`actions/checkout@v6` と `actions/upload-artifact@v6` を使用しています。
 
 手動実行も可能です。
 
