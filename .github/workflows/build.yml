@@ -119,6 +119,13 @@ jobs:
 
           $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
 
+          if ($exitCode -eq 0) {
+            $deadline = (Get-Date).AddSeconds(15)
+            while (-not (Test-Path $output) -and (Get-Date) -lt $deadline) {
+              Start-Sleep -Milliseconds 500
+            }
+          }
+
           if ($exitCode -ne 0 -or -not (Test-Path $output)) {
             throw "Ahk2Exe failed with exit code $exitCode"
           }
