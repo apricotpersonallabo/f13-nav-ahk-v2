@@ -17,7 +17,7 @@ jobs:
     runs-on: windows-latest
 
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -140,3 +140,24 @@ jobs:
         with:
           name: f13-nav
           path: dist/f13-nav.exe
+
+      - name: Publish release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: build-${{ github.run_number }}-${{ github.run_attempt }}
+          RELEASE_TITLE: f13-nav build ${{ github.run_number }}.${{ github.run_attempt }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $notes = @"
+          Automated build from commit $env:GITHUB_SHA.
+          Workflow run: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
+          "@
+
+          gh release create $env:RELEASE_TAG `
+            "dist\f13-nav.exe#f13-nav.exe" `
+            --repo $env:GITHUB_REPOSITORY `
+            --title $env:RELEASE_TITLE `
+            --notes $notes
