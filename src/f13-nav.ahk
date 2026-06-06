@@ -6,8 +6,8 @@
 #HotkeyInterval 2000
 #MaxHotkeysPerInterval 200
 
-; 元スクリプトの Process, Priority,, Realtime 相当。
-; Realtime が強すぎる場合は "High" に変更してください。
+; Equivalent to AutoHotkey v1: Process, Priority,, Realtime
+; Realtime can be too aggressive. Change to "High" if needed.
 ProcessSetPriority("Realtime")
 
 SetWorkingDir(A_ScriptDir)
@@ -23,5 +23,5 @@ F13 & H::Send "{Blind}{Home}"       ; Home
 F13 & `;::Send "{Blind}{End}"       ; End
 F13 & N::Send "{Blind}{Backspace}"  ; Backspace
 F13 & M::Send "{Blind}{Delete}"     ; Delete
-F13 & D::Send "{Blind}{AppsKey}"    ; 右クリックメニュー表示
+F13 & D::Send "{Blind}{AppsKey}"    ; Context menu
 F13 & S::Send "{Blind}{Escape}"     ; Esc
