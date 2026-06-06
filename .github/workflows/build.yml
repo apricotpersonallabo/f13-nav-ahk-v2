@@ -115,9 +115,11 @@ jobs:
             /compress 0 `
             /silent verbose
 
-          if ($LASTEXITCODE -ne 0) {
-            throw "Ahk2Exe failed with exit code $LASTEXITCODE"
-          }
+	$exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+
+	if ($exitCode -ne 0 -or -not (Test-Path $out)) {
+   	 throw "Ahk2Exe failed with exit code $exitCode"
+	}
 
           if (!(Test-Path $output)) {
             throw "Output exe was not created: $output"
