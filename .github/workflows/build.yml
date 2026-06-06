@@ -26,48 +26,47 @@ jobs:
           $tools = "$env:RUNNER_TEMP\ahk-tools"
           New-Item -ItemType Directory -Force -Path $tools | Out-Null
 
-          $headers = @{ "User-Agent" = "github-actions" }
+          # AutoHotkey v2 runtime/base file.
+          # Fixed endpoint for the current v2 ZIP.
+          $ahkV2Zip = Join-Path $tools "ahk-v2.zip"
+          Invoke-WebRequest `
+            -Uri "https://www.autohotkey.com/download/ahk-v2.zip" `
+            -OutFile $ahkV2Zip
+          Expand-Archive $ahkV2Zip (Join-Path $tools "ahk-v2") -Force
 
-          # AutoHotkey v2 latest release ZIP
-          $ahkRelease = Invoke-RestMethod `
-            -Headers $headers `
-            -Uri "https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest"
+          # Ahk2Exe is included in the final AutoHotkey v1.1 ZIP.
+          # Ahk2Exe can compile v2 scripts when the v2 AutoHotkey*.exe is passed as /base.
+          $ahkV1Version = "1.1.37.02"
+          $ahkV1Zip = Join-Path $tools "ahk-v1.zip"
+          Invoke-WebRequest `
+            -Uri "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$ahkV1Version/AutoHotkey_$ahkV1Version.zip" `
+            -OutFile $ahkV1Zip
+          Expand-Archive $ahkV1Zip (Join-Path $tools "ahk-v1") -Force
 
-          $ahkAsset = $ahkRelease.assets |
-            Where-Object { $_.name -match '^AutoHotkey_.*\.zip$' } |
+          $compiler = Get-ChildItem (Join-Path $tools "ahk-v1") -Recurse -Filter "Ahk2Exe.exe" |
+            Where-Object { $_.FullName -match "[\\/]Compiler[\\/]Ahk2Exe\.exe$" } |
             Select-Object -First 1
 
-          if (-not $ahkAsset) {
-            throw "AutoHotkey v2 zip asset not found."
+          $base = Get-ChildItem (Join-Path $tools "ahk-v2") -Recurse -Filter "AutoHotkey64.exe" |
+            Select-Object -First 1
+
+          if (-not $compiler) {
+            Write-Host "AutoHotkey v1 extracted files:"
+            Get-ChildItem (Join-Path $tools "ahk-v1") -Recurse | Select-Object FullName
+            throw "Ahk2Exe.exe not found in AutoHotkey v1 ZIP."
           }
-
-          Invoke-WebRequest $ahkAsset.browser_download_url -OutFile "$tools\autohotkey.zip"
-          Expand-Archive "$tools\autohotkey.zip" "$tools\autohotkey" -Force
-
-          # Ahk2Exe latest release EXE
-          $ahk2exeRelease = Invoke-RestMethod `
-            -Headers $headers `
-            -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
-
-          $ahk2exeAsset = $ahk2exeRelease.assets |
-            Where-Object { $_.name -eq "Ahk2Exe.exe" } |
-            Select-Object -First 1
-
-          if (-not $ahk2exeAsset) {
-            throw "Ahk2Exe.exe asset not found."
-          }
-
-          Invoke-WebRequest $ahk2exeAsset.browser_download_url -OutFile "$tools\Ahk2Exe.exe"
-
-          $base = Get-ChildItem "$tools\autohotkey" -Recurse -Filter "AutoHotkey64.exe" |
-            Select-Object -First 1
 
           if (-not $base) {
-            throw "AutoHotkey64.exe not found."
+            Write-Host "AutoHotkey v2 extracted files:"
+            Get-ChildItem (Join-Path $tools "ahk-v2") -Recurse | Select-Object FullName
+            throw "AutoHotkey64.exe not found in AutoHotkey v2 ZIP."
           }
 
-          "AHK2EXE=$tools\Ahk2Exe.exe" >> $env:GITHUB_ENV
+          "AHK2EXE=$($compiler.FullName)" >> $env:GITHUB_ENV
           "AHK_BASE=$($base.FullName)" >> $env:GITHUB_ENV
+
+          Write-Host "Ahk2Exe: $($compiler.FullName)"
+          Write-Host "Base:    $($base.FullName)"
 
       - name: Compile
         shell: pwsh
