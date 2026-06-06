@@ -1,6 +1,6 @@
-# f13-nav-ahk-v2
+# F13 Navigation for AutoHotkey v2
 
-AutoHotkey v2 version of the F13 navigation-key script.
+AutoHotkey v2 用の F13 レイヤーナビゲーションスクリプトです。
 
 ## Files
 
@@ -11,8 +11,10 @@ src/f13-nav.ahk
 
 ## Build
 
-Push to `main`, open a pull request, or run the workflow manually from GitHub Actions.
+GitHub に push すると、GitHub Actions が Windows runner 上で `src/f13-nav.ahk` を `dist/f13-nav.exe` にコンパイルし、artifact としてアップロードします。
 
-The workflow downloads both AutoHotkey v2 and Ahk2Exe from GitHub Releases only. It does not use `https://www.autohotkey.com/download/ahk-v2.zip`, because that URL can return a Cloudflare challenge page in CI.
+## Notes
 
-The compiled file is uploaded as the `f13-nav` artifact.
+- `#InstallKeybdHook` / `#InstallMouseHook` は v2 版コンパイルで構文エラーになるため使用していません。
+- `#UseHook` により、キーボードホットキーは hook 実装が強制されます。
+- `F13 & ;` は `SC027` で定義しています。これは US/JIS 配列で一般的なセミコロンキーのスキャンコードです。

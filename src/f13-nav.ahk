@@ -1,8 +1,6 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 #UseHook
-#InstallKeybdHook
-#InstallMouseHook
 #HotkeyInterval 2000
 #MaxHotkeysPerInterval 200
 
@@ -20,7 +18,7 @@ F13 & L::Send "{Blind}{Right}"      ; →
 F13 & U::Send "{Blind}{PgUp}"       ; PgUp
 F13 & O::Send "{Blind}{PgDn}"       ; PgDn
 F13 & H::Send "{Blind}{Home}"       ; Home
-F13 & `;::Send "{Blind}{End}"       ; End
+F13 & SC027::Send "{Blind}{End}"    ; End (; key)
 F13 & N::Send "{Blind}{Backspace}"  ; Backspace
 F13 & M::Send "{Blind}{Delete}"     ; Delete
 F13 & D::Send "{Blind}{AppsKey}"    ; Context menu
