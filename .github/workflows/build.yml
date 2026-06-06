@@ -21,108 +21,70 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download AutoHotkey v2 and Ahk2Exe from GitHub Releases
+      - name: Download AutoHotkey v2 and Ahk2Exe
         shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = "Stop"
 
-          $tools = Join-Path $env:RUNNER_TEMP "ahk-tools"
-          $ahkV2Dir = Join-Path $tools "autohotkey-v2"
-          $ahk2ExeDir = Join-Path $tools "ahk2exe"
+          $tools = "$env:RUNNER_TEMP\ahk-tools"
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
 
-          New-Item -ItemType Directory -Force -Path $tools, $ahkV2Dir, $ahk2ExeDir | Out-Null
+          $headers = @{ "User-Agent" = "github-actions" }
 
-          $headers = @{
-            "User-Agent" = "github-actions"
-            "Accept"     = "application/vnd.github+json"
-          }
+          # Download AutoHotkey v2 from GitHub Releases.
+          $ahkRelease = Invoke-RestMethod `
+            -Headers $headers `
+            -Uri "https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest"
 
-          if ($env:GITHUB_TOKEN) {
-            $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN"
-          }
-
-          function Get-LatestReleaseAsset {
-            param(
-              [Parameter(Mandatory = $true)][string]$Repository,
-              [Parameter(Mandatory = $true)][string]$AssetPattern
-            )
-
-            $release = Invoke-RestMethod `
-              -Headers $headers `
-              -Uri "https://api.github.com/repos/$Repository/releases/latest"
-
-            $asset = $release.assets |
-              Where-Object { $_.name -match $AssetPattern } |
-              Select-Object -First 1
-
-            if (-not $asset) {
-              $assetNames = ($release.assets | ForEach-Object { $_.name }) -join ", "
-              throw "Asset not found in $Repository latest release. Pattern: $AssetPattern. Available assets: $assetNames"
-            }
-
-            return [pscustomobject]@{
-              Tag = $release.tag_name
-              Name = $asset.name
-              Url = $asset.browser_download_url
-            }
-          }
-
-          # AutoHotkey v2 runtime/base file. Do not use autohotkey.com/download because it may return a Cloudflare challenge in CI.
-          $ahkV2Asset = Get-LatestReleaseAsset `
-            -Repository "AutoHotkey/AutoHotkey" `
-            -AssetPattern "^AutoHotkey_2\..*\.zip$"
-
-          $ahkV2Zip = Join-Path $tools $ahkV2Asset.Name
-          Write-Host "Downloading AutoHotkey $($ahkV2Asset.Tag): $($ahkV2Asset.Name)"
-          Invoke-WebRequest -Headers $headers -Uri $ahkV2Asset.Url -OutFile $ahkV2Zip
-          Expand-Archive $ahkV2Zip $ahkV2Dir -Force
-
-          $base = Get-ChildItem $ahkV2Dir -Recurse -Filter "AutoHotkey64.exe" |
+          $ahkAsset = $ahkRelease.assets |
+            Where-Object { $_.name -match '^AutoHotkey_2\..*\.zip$' } |
             Select-Object -First 1
 
-          if (-not $base) {
-            Get-ChildItem $ahkV2Dir -Recurse | Select-Object FullName | Format-Table -AutoSize
-            throw "AutoHotkey64.exe not found in AutoHotkey v2 ZIP."
+          if (-not $ahkAsset) {
+            throw "AutoHotkey v2 ZIP asset not found."
           }
 
-          # Current Ahk2Exe release. Prefer ZIP; fall back to EXE if a future release only provides the executable.
-          $ahk2ExeRelease = Invoke-RestMethod `
+          $ahkZip = Join-Path $tools "autohotkey-v2.zip"
+          Invoke-WebRequest $ahkAsset.browser_download_url -OutFile $ahkZip
+          Expand-Archive $ahkZip (Join-Path $tools "autohotkey-v2") -Force
+
+          # Download Ahk2Exe from GitHub Releases.
+          $ahk2exeRelease = Invoke-RestMethod `
             -Headers $headers `
             -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
 
-          $ahk2ExeZipAsset = $ahk2ExeRelease.assets |
-            Where-Object { $_.name -match "^Ahk2Exe.*\.zip$" } |
+          $ahk2exeAsset = $ahk2exeRelease.assets |
+            Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' -or $_.name -match '^Ahk2Exe.*\.exe$' } |
             Select-Object -First 1
 
-          $ahk2ExeExeAsset = $ahk2ExeRelease.assets |
-            Where-Object { $_.name -match "^Ahk2Exe.*\.exe$" } |
-            Select-Object -First 1
-
-          if ($ahk2ExeZipAsset) {
-            $ahk2ExeZip = Join-Path $tools $ahk2ExeZipAsset.name
-            Write-Host "Downloading Ahk2Exe $($ahk2ExeRelease.tag_name): $($ahk2ExeZipAsset.name)"
-            Invoke-WebRequest -Headers $headers -Uri $ahk2ExeZipAsset.browser_download_url -OutFile $ahk2ExeZip
-            Expand-Archive $ahk2ExeZip $ahk2ExeDir -Force
-
-            $compiler = Get-ChildItem $ahk2ExeDir -Recurse -Filter "Ahk2Exe.exe" |
-              Select-Object -First 1
+          if (-not $ahk2exeAsset) {
+            throw "Ahk2Exe release asset not found."
           }
-          elseif ($ahk2ExeExeAsset) {
-            $compilerPath = Join-Path $ahk2ExeDir "Ahk2Exe.exe"
-            Write-Host "Downloading Ahk2Exe $($ahk2ExeRelease.tag_name): $($ahk2ExeExeAsset.name)"
-            Invoke-WebRequest -Headers $headers -Uri $ahk2ExeExeAsset.browser_download_url -OutFile $compilerPath
+
+          $ahk2exeDownload = Join-Path $tools $ahk2exeAsset.name
+          Invoke-WebRequest $ahk2exeAsset.browser_download_url -OutFile $ahk2exeDownload
+
+          $ahk2exeDir = Join-Path $tools "ahk2exe"
+          New-Item -ItemType Directory -Force -Path $ahk2exeDir | Out-Null
+
+          if ($ahk2exeAsset.name -match '\.zip$') {
+            Expand-Archive $ahk2exeDownload $ahk2exeDir -Force
+            $compiler = Get-ChildItem $ahk2exeDir -Recurse -Filter "Ahk2Exe.exe" | Select-Object -First 1
+          } else {
+            $compilerPath = Join-Path $ahk2exeDir "Ahk2Exe.exe"
+            Copy-Item $ahk2exeDownload $compilerPath -Force
             $compiler = Get-Item $compilerPath
           }
-          else {
-            $assetNames = ($ahk2ExeRelease.assets | ForEach-Object { $_.name }) -join ", "
-            throw "Ahk2Exe asset not found. Available assets: $assetNames"
-          }
+
+          $base = Get-ChildItem (Join-Path $tools "autohotkey-v2") -Recurse -Filter "AutoHotkey64.exe" |
+            Select-Object -First 1
 
           if (-not $compiler) {
-            Get-ChildItem $ahk2ExeDir -Recurse | Select-Object FullName | Format-Table -AutoSize
-            throw "Ahk2Exe.exe not found after download/extract."
+            throw "Ahk2Exe.exe not found after download."
+          }
+
+          if (-not $base) {
+            throw "AutoHotkey64.exe not found in AutoHotkey v2 ZIP."
           }
 
           "AHK2EXE=$($compiler.FullName)" >> $env:GITHUB_ENV

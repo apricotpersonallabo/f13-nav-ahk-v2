@@ -1,8 +1,12 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 #UseHook
-#HotkeyInterval 2000
-#MaxHotkeysPerInterval 200
+
+; AutoHotkey v2 replacements for v1 directives:
+;   #HotkeyInterval 2000        -> A_HotkeyInterval := 2000
+;   #MaxHotkeysPerInterval 200  -> A_MaxHotkeysPerInterval := 200
+A_HotkeyInterval := 2000
+A_MaxHotkeysPerInterval := 200
 
 ; Equivalent to AutoHotkey v1: Process, Priority,, Realtime
 ; Realtime can be too aggressive. Change to "High" if needed.
