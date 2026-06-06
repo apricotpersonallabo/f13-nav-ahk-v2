@@ -1,0 +1,111 @@
+name: Build AutoHotkey v2 EXE
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download AutoHotkey v2 and Ahk2Exe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $tools = "$env:RUNNER_TEMP\ahk-tools"
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
+
+          $headers = @{ "User-Agent" = "github-actions" }
+
+          # AutoHotkey v2 latest release ZIP
+          $ahkRelease = Invoke-RestMethod `
+            -Headers $headers `
+            -Uri "https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest"
+
+          $ahkAsset = $ahkRelease.assets |
+            Where-Object { $_.name -match '^AutoHotkey_.*\.zip$' } |
+            Select-Object -First 1
+
+          if (-not $ahkAsset) {
+            throw "AutoHotkey v2 zip asset not found."
+          }
+
+          Invoke-WebRequest $ahkAsset.browser_download_url -OutFile "$tools\autohotkey.zip"
+          Expand-Archive "$tools\autohotkey.zip" "$tools\autohotkey" -Force
+
+          # Ahk2Exe latest release EXE
+          $ahk2exeRelease = Invoke-RestMethod `
+            -Headers $headers `
+            -Uri "https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest"
+
+          $ahk2exeAsset = $ahk2exeRelease.assets |
+            Where-Object { $_.name -eq "Ahk2Exe.exe" } |
+            Select-Object -First 1
+
+          if (-not $ahk2exeAsset) {
+            throw "Ahk2Exe.exe asset not found."
+          }
+
+          Invoke-WebRequest $ahk2exeAsset.browser_download_url -OutFile "$tools\Ahk2Exe.exe"
+
+          $base = Get-ChildItem "$tools\autohotkey" -Recurse -Filter "AutoHotkey64.exe" |
+            Select-Object -First 1
+
+          if (-not $base) {
+            throw "AutoHotkey64.exe not found."
+          }
+
+          "AHK2EXE=$tools\Ahk2Exe.exe" >> $env:GITHUB_ENV
+          "AHK_BASE=$($base.FullName)" >> $env:GITHUB_ENV
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $input = "src\f13-nav.ahk"
+          $outputDir = "dist"
+          $output = "$outputDir\f13-nav.exe"
+
+          if (!(Test-Path $input)) {
+            throw "Input script not found: $input"
+          }
+
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+          & "$env:AHK2EXE" `
+            /in "$input" `
+            /out "$output" `
+            /base "$env:AHK_BASE" `
+            /compress 0 `
+            /silent verbose
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Ahk2Exe failed with exit code $LASTEXITCODE"
+          }
+
+          if (!(Test-Path $output)) {
+            throw "Output exe was not created: $output"
+          }
+
+      - name: Show SHA256
+        shell: pwsh
+        run: |
+          Get-FileHash dist\f13-nav.exe -Algorithm SHA256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: f13-nav
+          path: dist/f13-nav.exe
