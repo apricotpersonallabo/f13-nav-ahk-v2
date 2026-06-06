@@ -117,12 +117,8 @@ jobs:
 
           $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
 
-          if ($exitCode -ne 0 -or -not (Test-Path $out)) {
+          if ($exitCode -ne 0 -or -not (Test-Path $output)) {
             throw "Ahk2Exe failed with exit code $exitCode"
-          }
-
-          if (!(Test-Path $output)) {
-            throw "Output exe was not created: $output"
           }
 
       - name: Show SHA256
